@@ -1,0 +1,209 @@
+\documentclass[runningheads]{llncs}
+
+\usepackage{graphicx}
+\usepackage{todonotes}
+\usepackage{listingsutf8}
+\usepackage[hidelinks]{hyperref}
+\usepackage{cleveref}
+
+\renewcommand\UrlFont{\color{blue}\rmfamily}
+
+\begin{document}
+
+\title{Representing geometric fuzziness and allowing for probabilistic topological functions with FUSS, an extension ontology to GeoSPARQL}
+\titlerunning{Fuzziness \& Probabilistic}
+
+\author{
+    Nicholas J. Car\inst{1,2}\orcidID{0000-0002-8742-7730}
+}
+
+\authorrunning{Car N.J.}
+
+\institute{
+    {
+        KurrawongAI, Brisbane, Australia\\
+        \email{nick@kurrawong.ai}\\
+        \url{https://kurrawong.ai}
+    }
+    \and
+    {
+        Australian National University, Australia\\
+        \email{nicholas.car@anu.edu.au}\\
+        \url{https://researchers.anu.edu.au/researchers/car-n}
+    }
+}
+
+\maketitle
+
+\begin{abstract}
+Fuzziness \& Uncertainty Specification for Spatiality (FUSS) is a small extension ontology to GeoSPARQL that allows for uncertainty (fuzziness)  in the representation of geometry and for probabilistic topological calculations using them. It introduces ontological elements that allow standard GeoSPARQL geometries to be associated in different ways, allowing for different forms of uncertainty in the location of a spatial feature associated with them. It describes how standard topological functions - such as those defined by GeoSPARQL - may be applied to the groups of geometries and yield probabilistic results. 
+
+\keywords{GeoSPARQL  \and spatial \and geospatial \and Semantic Web \and RDF \and OWL \and OGC \and Fuzzy Logic \and probabilistic.}
+\end{abstract}
+
+
+\section{Introduction}\label{sec:introduction}
+The GeoSPARQL standard \cite{nicholas_j_car_ogc_2023} provides classes and properties for the representation of spatial information in Semantic Web \cite{BernersLee2001TheSW} form. The main classes are \texttt{Feature} and \texttt{Geometry} with the former holding conceptual information about a spatial objects and the latter representations of its spatial projects, such as a polygon defined with coordinates. Predicates for indicating different forms of  geometry position serialization, topological relations between objects and scalar spatial values, such as area, are also provided. 
+
+In addition to its ontology, GeoSPARQL defines a set of functions - topological, spatial aggregate and others - that systems can implement to calculate the relations between features and other spatial information.
+
+GeoSPARQL does not specifically cater for fuzzy geometries or probabilistic topological functions: the only forms of geometry handled are the the \textit{simple features} - \cite{herring2011} types of \texttt{POINT}, \texttt{LINESTRING}, \texttt{POLYGON}, \texttt{MULTIPOLYGON} \textit{etc.}. - and topological functions return binary results - either a polygon is disjoint with another or it is not.
+
+GeoSPARQL is not, by itself, completely sufficient for any particular task, i.e. provide the user with all the elements they need, for it is expected to be used with other Semantic Web models as needed. For example, if a user wanted to represent the area of a spatial object, GeoSPARQL provides the \texttt{hasArea} predicate to indicate a scalar value but leaves any units of measure needed to the the user to define with predicates and classes from elsewhere, perhaps by using the \textit{Quantities, Units, Dimensions \& Types} \footnote{\url{https://qudt.org}} ontology.
+
+This expectation of use with other ontologies also allows GeoSPARQL to be extended by users defining model elements useful to them.
+
+This paper describes how, by use with a small ontology of only a few classes and predicates known as the \textit{Fuzziness \& Uncertainty Specification for Spatiality} (FUSS) ontology that we have defined, \footnote{\url{https://w3id.org/profile/fuss}}, GeoSPARQL can represent fuzzy spatiality and allow for probabilistic topological functions as well as providing several other capabilities of use to spatial data users such as position obfuscation with specific tolerances.
+
+
+\section{Motivation}\label{sec:motivation}
+
+The motivation for this work is encountered regularly: many projects need to represent uncertainty - fuzziness - in location and topological functions that work well with fuzzy locations must be able to return probabilistic results.
+
+Some examples of spatial objects for which the authors have recently needed to represent with uncertain positions are:
+
+\begin{enumerate}
+    \item Australian Indigenous (Aboriginal) peoples' traditional land areas
+    \item mineral occurrence areas
+    \item informal named geographical objects
+    \item species distribution maps
+\end{enumerate}
+
+None of these are well served with crisp - non-fuzzy - representations, for example, using a crisp polygon to represent the extent of an Aboriginal traditional land area will not capture the fact that no such areas ever had precise boundaries in all directions - they changed over time and with populations' fortunes - or that knowledge of boundaries has been lost since the colonisation of Australia.
+
+A second example is mineral occurrences in the earth's crust often change gradually over distances and areas with commercial extraction potential are estimated by sampling - surface collection or drillhole samples - which usually looks for high concentrations. No simple points or individual polygons can represent gradients and estimations.
+
+Data analysers called on to work with information that would best be represented with uncertainty when none is initially present in data they have been given are often forced to create ``pseudo-fuzzy'' spatial representations by blurring polygon boundaries or by representing point locations with a polygon - perhaps circle - itself with a blurred boundary.
+
+The phrase ``pseudo-fuzzy'' is used here since the methods described can not represent things such as non-symetic two-dimensional uncertainly and the original crisp spatial information may be able to be calculated, which is sometimes problematic.
+
+This work aims to both provide the ontological elements necessary for representations several forms of uncertain/fuzzy spatial information and instructions on how to extend common topological functions to work with those representations. In doing this, it it hoped that this work will both provide users with more sophisticated tools and remove the need for them to repeatedly have to create potentially idiosyncratic fuzzy representations repeatedly with using data when only crisp forms exist.
+
+
+\section{Updates in GeoSPARQL 1.1}\label{sec:newfeatures}
+So far (as of June, 2020) the GeoSPARQL SWG has triaged change requests for GeoSPARQL releases and has addressed
+many 1.1 requests which are the only ones we report here. The next sections foreshadow likely 1.2 and 2.0 updates.
+
+\subsection{Profile Declaration}\label{sec:profiledec}
+One of the first actions undertaken by the SWG was to link the GeoSPARQL 1.0 elements through a \textit{profile} 
+declaration, where a profile is a special type of \textit{specification}, as defined by \textit{The Profiles Vocabulary}~\cite{atkinson_profiles_2020}. 
+The specific motivation for this was the SWG's recognition that GeoSPARQL 1.0 consisted of multiple parts, not all
+of which were easy to discover. As a result, some GeoSPARQL users were unaware of some of the resources and some
+resources were accidentally duplicated or partly re-implemented. Profile declarations of this sort are anticipated, by the OGC, 
+as being the \textit{best practice} way for it to deliver multi-part standards.
+
+The profile declaration for GeoSPARQL 1.0 will be published by the OGC as a stand-alone resource sometime in early 2021 along with some 
+updated GeoSPARQL 1.0 resources. The profile declaration for GeoSPARQL 1.1 will be published at the same time as the 
+1.1 releases, currently expected in mid-2021. All 1.0 and 1.1 release resources are currently available in draft form 
+in the SWG's online code repository\footnote{\url{https://github.com/opengeospatial/ogc-geosparql}}. The 1.1 releases' resources are:
+
+\begin{enumerate}
+    \item a profile declaration
+    \item a specification document
+    \item an RDF/OWL ontology document
+    \item a Functions \& Rules vocabulary, derived from the ontology
+    \item a Simple Features feature types vocabulary
+    \item a set of RIF~\cite{kifer2013rif} rules
+    \item SHACL~\cite{knublauch_shapes_2017} shapes for RDF data validation 
+\end{enumerate}
+
+
+\subsection{New geometry literals}\label{sec:newliterals}
+Three new geometry serializations are introduced: 
+
+\begin{enumerate}
+    \item \textbf{GeoJSON} (Geo- JavaScript Object Notation)~\cite{butler2016geojson}
+    \item \textbf{KML} (Keyhole Markup Language)~\cite{nolan2014keyhole} 
+    \item \textbf{DGGS} (Discrete Global Grid System)~\cite{sahr1998discrete}
+\end{enumerate} 
+
+An example of a point's GeoJSON geometry serialization is given below, followed by an unrelated simple polygon \textit{AusPIX}
+\footnote{\url{https://w3id.org/dggs/auspix}} DGGS geometry serialization.
+
+\small
+\begin{lstlisting}[caption=GeoJSON geometry serialization example,label=lst:geojsonliteral,language=sql,frame=single,basicstyle=\ttfamily,showstringspaces=false]
+"""{"type":"Point", "coordinates":[-83.38,33.95]}"""
+^^<http://www.opengis.net/ont/geosparql#geoJSONLiteral>
+\end{lstlisting}
+
+\begin{lstlisting}[caption=AusPIX DGGS geometry serialization example,label=lst:geodggsWktliteral,language=sql,frame=single,basicstyle=\ttfamily,showstringspaces=false]
+"""<https://w3id.org/dggs/auspix> DirectedOrdinateList 
+(R3231 R3234 R3235 R3238 R3243 R3246)"""
+^^<http://www.opengis.net/ont/geosparql#dggsWktLiteral>
+\end{lstlisting}
+\normalsize
+
+GeoJSON \& KML have been much anticipated and were requested by the SDWWG and many users of 
+GeoSPARQL, due to those formats' popularity.
+
+The DGGS format is more forward-looking in that it is not driven by user demand but by predicted demand.
+DGGS does not have a single, concrete format standard as the others do, nor is it ever likely to - different DGGSes will 
+likely implement very different data formats - so GeoSAPRQL 1.1 makes generalized provisions for DGGS serializations but 
+presents no detailed requirements for them, only stating that the specific DGGS must be identified.
+
+\subsection{New spatial functions}\label{sec:newfunctions}
+While spatial aggregation functions are the norm in many non-semantic geospatial databases such as PostGIS or Oracle Spatial, 
+at the time of defining the GeoSPARQL 1.0 standard, aggregation functions had not yet been introduced into the SPARQL standard,
+but have been with SPARQL 1.1~\cite{w3c_sparql_working_group_sparql_2013}. Spatial aggregation functions 
+similar to traditional (relation database), aggregation functions such as AVG, MAX, or MIN allow aggregated results of geometry 
+queries, for example, to create the union of a set of selected serialized geometries. While calculating these aggregates is 
+certainly possible outside of a semantic database, and thus GeoSPARQL, the inclusion of the functions provides distinct advantages:
+
+\begin{enumerate}
+    \item No client-side library is needed to create an aggregated geometry result
+    \item Fewer/more appropriate results returned, for example a union result
+    \item Federated SPARQL queries can aggregate results from multiple endpoints
+\end{enumerate}
+
+In addition to \href{http://www.opengis.net/def/function/geosparql/union}{\emph{geof:union}}, \href{http://www.opengis.net/def/function/geosparql/envelope}{\emph{geof:envelope}} and \href{http://www.opengis.net/def/function/geosparql/convexHull}{\emph{geof:convexHull}} defined in GeoSPARQL 1.0 
+for use within SPARQL \texttt{FILTER} operations, 1.1 defines \emph{geosf:Union}, \emph{geosf:Envelope} and \emph{geosf:ConvexHull}
+as well as \emph{geosf:BoundingCircle}, \emph{geosf:Centroid}, \emph{geosf:ConcatLines} - concatenating a set of overlapping linestrings 
+that overlap - and \emph{geosf:ConcaveHull} that can return aggregated results. Listing~\ref{lst:agfunc} gives an example 
+of one of these new functions in use.
+% \todo[inline]{Timo: I will create a pull request in the GeoSPARQL repository to clear up the issues concerning the spatial aggregate functions. Then I will update the namespaces here. I would find it nice to also include the functions we have discussed yesterday: transformation of SRS and in between literal formats. Should we mention it here as future work or should we make a draft pull request for that so that people have a reference? I think the latter}
+\small
+\begin{lstlisting}[caption=Aggregation Function example SPARQL query,label=lst:agfunc,language=sql,frame=single,basicstyle=\ttfamily,showstringspaces=false]
+# returns the circle geometry bounding all the geometries 
+# of Feature <x>
+SELECT (geosaf:BoundingCircle(?geo) AS ?circ)
+WHERE {
+    <x> geo:hasGeometry/geo:asWKT ?geo .
+}
+\end{lstlisting}
+\normalsize
+
+Functions to retrieve min/max values of geometries' coordinates are added: \href{http://www.opengis.net/def/function/geosparql/minX}{\emph{geof:minX}} \& \href{http://www.opengis.net/def/function/geosparql/maxX}{\emph{geof:maxX}},
+\href{http://www.opengis.net/def/function/geosparql/minY}{\emph{geof:minY}} \& \href{http://www.opengis.net/def/function/geosparql/maxY}{\emph{geof:maxY}} and \href{http://www.opengis.net/def/function/geosparql/minZ}{\emph{geof:minZ}} \& \href{http://www.opengis.net/def/function/geosparql/maxZ}{\emph{geof:maxZ}}.
+
+\subsection{Ontology extensions}\label{sec:ontexts}
+GeoSPARQL 1.1 - see Figure~\ref{fig:geosparql11ontology} for an overview - extends the GeoSPARQL ontology by adding a new class, \href{http://www.opengis.net/ont/geosparql#SpatialMeasure}{\texttt{geo:SpatialMeasure}}. This class represents a spatial measurement 
+such as a volume, length, or area associated with a measurement amount and a unit of measure. It is the range of three newly-defined properties:
+\href{http://www.opengis.net/ont/geosparql#hasArea}{\texttt{geo:hasArea}}, \href{http://www.opengis.net/ont/geosparql#hasLength}{\texttt{geo:hasLength}} and \href{http://www.opengis.net/ont/geosparql#hasVolume}{\texttt{geo:hasVolume}} which make these attributes of a geometry better accessible using 
+SPARQL. 
+
+These additions address requests from the SDWWG \& SWG but
+do more too: they open up GeoSPARQL to general patterns of measurement present in ontologies 
+such as the W3C's \textit{SOSA}~\cite{haller_semantic_2017}. Similarly, 
+the 1.1 release addition of property \href{http://www.opengis.net/def/function/geosparql/inSRS}{\texttt{geo:inSRS}}, allows declarations of a geometry's SRS, independent of serializations and paves the way 
+for future definition of SRSes in RDF, anticipated for GeoSPARQL 2.0.
+
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=\linewidth]{images/geold_ontology.png}
+    \caption{Excerpt of the GeoSPARQL 1.1 ontology including one example feature}
+    \label{fig:geosparql11ontology}
+\end{figure}
+
+\section{Conclusions}\label{sec:conclusions}
+A staged schedule of updates to this important \textit{Semantic Web} spatial standard has been initiated with simple and strictly backwards-compatible changes now in GeoSPARQL 1.1. Features discussed for GeoSPARQL 1.2 include the formalization of coordinate reference systems in RDF, the depiction of accurracies and level of detail and the addition of further - possibly also binary - literal types. Work on GeoSPARQL 1.2 will start later in 2021. GeoSPARQL 2.0, as yet un-specified, is likely to introduce more substantial changes to the standard. Changes proposed for GeoSPARQL 2.0 include to broaden the scope of GeoSPARQL to further kinds of spatial data. To that end, full-featured support for 3D geometries and support for coverages are discussed on the level of data representations. These proposals are related to some growing interest in the semantic web community in representing further geospatial data related to building modeling information \cite{zhang2018bimsparql} and coverage data \cite{homburg2020geosparql+}. More requirements might also be introduced once feedback has been received from the GeoSPARQL 1.1 and 1.2 releases.
+
+%
+% ---- Bibliography ----
+%
+% BibTeX users should specify bibliography style 'splncs04'.
+% References will then be sorted and formatted in the correct style.
+%
+\bibliographystyle{splncs04}
+\bibliography{GeoSPARQL}
+
+\end{document}
